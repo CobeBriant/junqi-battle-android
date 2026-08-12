@@ -79,11 +79,19 @@
     return [];
   }
 
+  let pulseRAF = null;
+  function schedulePulse() {
+    if (pulseRAF || animating) return;
+    if (selected != null || (targets && targets.size)) {
+      pulseRAF = w.requestAnimationFrame(() => { pulseRAF = null; render(); });
+    }
+  }
   function render() {
     view.draw({ cells: buildCells() }, { selected, targets, lastCells: lastCells() });
     turnChip.textContent = J.sideName(S.turn) + '回合';
     turnChip.className = S.turn === 'red' ? 'red' : '';
     modeLabel.textContent = (mode === 'hidden' ? '背靠背暗棋' : '翻棋') + (aiOn ? ' · 人机' : '');
+    schedulePulse();
   }
 
   // —— 交互 ——
@@ -129,11 +137,11 @@
     if (willSee && !animating) {
       animating = true;
       animateMove(from, to, aKind, aSide, () => {
-        if (r.battle) flashCell(to, '#e0573e', 320, () => { animating = false; afterAction(oldTurn); });
+        if (r.battle) burstCell(to, '#e0573e', () => { animating = false; afterAction(oldTurn); });
         else { animating = false; afterAction(oldTurn); }
       });
     } else {
-      if (r.battle) flashCell(to, '#e0573e', 320);
+      if (r.battle) burstCell(to, '#e0573e');
       afterAction(oldTurn);
     }
   }
@@ -159,31 +167,46 @@
   function now() { return (w.performance && w.performance.now) ? w.performance.now() : Date.now(); }
   function animateMove(from, to, kind, side, done) {
     const a = view.cellCenter(from), b = view.cellCenter(to);
-    const dur = 200, t0 = now();
+    const dur = 230, t0 = now();
     (function frame() {
-      const t = Math.min(1, (now() - t0) / dur), e = t * t * (3 - 2 * t);
+      const t = Math.min(1, (now() - t0) / dur);
+      const e = 1 - Math.pow(1 - t, 3); // easeOutCubic
       const x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e;
+      const scale = 1 + 0.10 * Math.sin(t * Math.PI); // 落地轻微回弹
       view.draw({ cells: buildCells() },
-        { selected: null, targets: null, lastCells: [from, to], skipCell: to, float: { x, y, kind, side, scale: 1 } });
+        { selected: null, targets: null, lastCells: [from, to], skipCell: to, float: { x, y, kind, side, scale } });
       if (now() - t0 < dur) w.requestAnimationFrame(frame);
       else { render(); done && done(); }
     })();
   }
   function popCell(cell, kind, side, done) {
     const c = view.cellCenter(cell);
-    const dur = 180, t0 = now();
+    const dur = 280, t0 = now();
     (function frame() {
-      const t = Math.min(1, (now() - t0) / dur), s = 0.5 + 0.5 * (t * t * (3 - 2 * t));
-      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], float: { x: c.x, y: c.y, kind, side, scale: s } });
+      const t = Math.min(1, (now() - t0) / dur);
+      const phase = t < 0.5 ? (1 - t * 2) : ((t - 0.5) * 2); // 1→0→1 模拟翻转
+      const back = t < 0.5;
+      const sx = Math.max(0.05, Math.abs(phase));
+      const scale = 1 + 0.12 * Math.sin(t * Math.PI);
+      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], float: { x: c.x, y: c.y, kind, side, back, sx, scale } });
       if (now() - t0 < dur) w.requestAnimationFrame(frame);
       else { render(); done && done(); }
     })();
   }
-  function flashCell(cell, color, dur, done) {
-    const t0 = now();
+  function burstCell(cell, color, done) {
+    const c = view.cellCenter(cell);
+    const CS = view.cellSize;
+    const parts = []; const n = 16;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + Math.random() * 0.5;
+      const sp = CS * (0.5 + Math.random() * 0.9);
+      parts.push({ vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: CS * (0.05 + Math.random() * 0.06) });
+    }
+    const dur = 430, t0 = now();
     (function frame() {
       const t = Math.min(1, (now() - t0) / dur);
-      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], ring: { cell, color, t } });
+      const live = parts.map((p) => ({ x: c.x + p.vx * t, y: c.y + p.vy * t + CS * 0.25 * t * t, r: p.r, t }));
+      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], burst: live });
       if (t < 1) w.requestAnimationFrame(frame);
       else { render(); done && done(); }
     })();
