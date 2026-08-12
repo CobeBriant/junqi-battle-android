@@ -1,6 +1,6 @@
 /* game.js — 主对局页：两种玩法共用 Canvas 交互（支持人机对战） */
 (function () {
-  const J = window.Junqi, B = J.Board, Engine = J.Engine, AI = J.AI;
+  const J = window.Junqi, B = J.Board, Engine = J.Engine, AI = J.AI, w = window;
 
   const params = new URLSearchParams(location.search);
   const mode = params.get('mode') || J.loadMode() || 'flip';
@@ -35,7 +35,16 @@
   let aiThinking = false;
 
   const canvas = document.getElementById('board');
-  const view = J.createBoardView(canvas);
+  let view;
+  let animating = false;
+  let revealAll = false;
+
+  function bottomSideFor() {
+    const o = J.Settings.orientation;
+    const viewer = aiOn ? humanSide : S.turn;
+    return o === 'auto' ? viewer : o;
+  }
+  function makeView() { view = J.createBoardView(canvas, { bottomSide: bottomSideFor() }); view.fit(); }
   const toastEl = document.getElementById('toast');
   const turnChip = document.getElementById('turnChip');
   const modeLabel = document.getElementById('modeLabel');
@@ -50,8 +59,8 @@
       for (const id in v.pieces) {
         const p = v.pieces[id];
         if (!p.alive || p.cell == null) continue;
-        if (p.side !== viewer && !p.revealed) continue; // 敌方未揭示不可见
-        cells[p.cell].piece = { kind: p.kind, side: p.side, revealed: p.revealed, back: false };
+        if (revealAll || p.side === viewer || p.revealed)
+          cells[p.cell].piece = { kind: p.kind, side: p.side, revealed: true, back: false };
       }
     } else {
       for (const id in S.pieces) {
@@ -88,6 +97,7 @@
   }
 
   function onTap(cell) {
+    if (animating) return;
     if (pendingHandoff || aiThinking || S.result) return;
     if (aiOn && S.turn !== humanSide) return;       // 非人类回合忽略点击
     const p = pieceAt(cell);
@@ -95,30 +105,88 @@
     if (mode === 'flip' && p && !p.revealed) { doFlip(cell); return; }
     if (mySelectable(p)) {
       const moves = Engine.legalMoves(S, p.id);
-      if (moves.length) { selected = cell; targets = new Set(moves); render(); return; }
+      if (moves.length) { selected = cell; targets = new Set(moves); J.Sound.click(); render(); return; }
     }
     selected = null; targets = null; render();
+  }
+
+  function playMoveOrCapture(aKind, dKind, battle) {
+    if (battle) J.Sound.capture(); else J.Sound.move();
   }
 
   function doMove(from, to) {
     const attacker = S.pieces[S.board[from]];
     const defenderId = S.board[to];
     const aKind = attacker.kind, dKind = defenderId ? S.pieces[defenderId].kind : null;
+    const aSide = attacker.side;
     const oldTurn = S.turn;
+    const willSee = (mode === 'flip') || aSide === viewer; // 该步是否在当前视角可见
     const r = Engine.applyAction(S, { type: 'move', pieceId: S.board[from], from, to });
     selected = null; targets = null;
-    if (!r.ok) { toast('无效移动'); render(); return; }
+    if (!r.ok) { J.Sound.illegal(); toast('无效移动'); render(); return; }
+    playMoveOrCapture(aKind, dKind, !!r.battle);
     if (r.battle) toast(battleText(oldTurn, aKind, dKind, r.battle));
-    afterAction(oldTurn);
+    if (willSee && !animating) {
+      animating = true;
+      animateMove(from, to, aKind, aSide, () => {
+        if (r.battle) flashCell(to, '#e0573e', 320, () => { animating = false; afterAction(oldTurn); });
+        else { animating = false; afterAction(oldTurn); }
+      });
+    } else {
+      if (r.battle) flashCell(to, '#e0573e', 320);
+      afterAction(oldTurn);
+    }
   }
 
   function doFlip(cell) {
     const id = S.board[cell];
+    const p = S.pieces[id];
+    const kind = p ? p.kind : null, side = p ? p.side : null;
     const oldTurn = S.turn;
     const r = Engine.applyAction(S, { type: 'flip', pieceId: id });
     selected = null; targets = null;
-    if (!r.ok) { toast('无效翻棋'); render(); return; }
-    afterAction(oldTurn);
+    if (!r.ok) { J.Sound.illegal(); toast('无效翻棋'); render(); return; }
+    J.Sound.flip();
+    if (!animating) {
+      animating = true;
+      popCell(cell, kind, side, () => { animating = false; afterAction(oldTurn); });
+    } else {
+      afterAction(oldTurn);
+    }
+  }
+
+  // —— 动画 ——
+  function now() { return (w.performance && w.performance.now) ? w.performance.now() : Date.now(); }
+  function animateMove(from, to, kind, side, done) {
+    const a = view.cellCenter(from), b = view.cellCenter(to);
+    const dur = 200, t0 = now();
+    (function frame() {
+      const t = Math.min(1, (now() - t0) / dur), e = t * t * (3 - 2 * t);
+      const x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e;
+      view.draw({ cells: buildCells() },
+        { selected: null, targets: null, lastCells: [from, to], skipCell: to, float: { x, y, kind, side, scale: 1 } });
+      if (now() - t0 < dur) w.requestAnimationFrame(frame);
+      else { render(); done && done(); }
+    })();
+  }
+  function popCell(cell, kind, side, done) {
+    const c = view.cellCenter(cell);
+    const dur = 180, t0 = now();
+    (function frame() {
+      const t = Math.min(1, (now() - t0) / dur), s = 0.5 + 0.5 * (t * t * (3 - 2 * t));
+      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], float: { x: c.x, y: c.y, kind, side, scale: s } });
+      if (now() - t0 < dur) w.requestAnimationFrame(frame);
+      else { render(); done && done(); }
+    })();
+  }
+  function flashCell(cell, color, dur, done) {
+    const t0 = now();
+    (function frame() {
+      const t = Math.min(1, (now() - t0) / dur);
+      view.draw({ cells: buildCells() }, { selected: null, targets: null, lastCells: [cell], ring: { cell, color, t } });
+      if (t < 1) w.requestAnimationFrame(frame);
+      else { render(); done && done(); }
+    })();
   }
 
   function afterAction(oldTurn) {
@@ -152,8 +220,9 @@
       if (!r.ok) {
         const acts = Engine.allLegalActions(S);
         if (acts.length) Engine.applyAction(S, acts[0]); // 兜底：随机一步避免卡死
-      } else if (r.battle) {
-        toast(battleText(oldTurn, aKind, dKind, r.battle));
+      } else {
+        playMoveOrCapture(aKind, dKind, !!r.battle);
+        if (r.battle) toast(battleText(oldTurn, aKind, dKind, r.battle));
       }
       render();
       if (S.result) showGameOver();
@@ -180,6 +249,7 @@
       : `平局（${reasonText(reason)}）`;
     document.getElementById('resultText').textContent = txt;
     document.getElementById('gameover').classList.add('show');
+    if (winner) J.Sound.win(); else J.Sound.lose();
   }
 
   // —— 顶栏按钮 ——
@@ -211,7 +281,7 @@
       S = Engine.createGame({ mode: 'flip', opponent: aiOn ? 'ai' : 'human', aiLevel: level });
     }
     viewer = aiOn ? humanSide : S.turn;
-    selected = null; targets = null; pendingHandoff = false; aiThinking = false;
+    selected = null; targets = null; pendingHandoff = false; aiThinking = false; revealAll = false;
     aiBadge.hidden = true;
     document.getElementById('gameover').classList.remove('show');
     persist();
@@ -238,6 +308,8 @@
   });
   document.getElementById('againBtn').addEventListener('click', restart);
   document.getElementById('toHomeBtn').addEventListener('click', () => J.go('index.html'));
+  const revealBtn = document.getElementById('revealBtn');
+  if (revealBtn) revealBtn.addEventListener('click', () => { revealAll = true; render(); });
 
   let toastTimer = null;
   function toast(msg) {
@@ -246,10 +318,14 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
   }
 
-  function fitAndRender() { view.fit(); render(); }
+  function fitAndRender() { if (!view) makeView(); else view.fit(); render(); }
   window.addEventListener('resize', fitAndRender);
 
+  // 视角（设置）变化时重建棋盘视图
+  J.Settings.subscribe(() => { if (view) { makeView(); render(); } });
+
   // 初始：暗棋热座需先交接给先手
+  makeView();
   fitAndRender();
   if (!aiOn && mode === 'hidden') {
     pendingHandoff = true;
@@ -257,4 +333,5 @@
     document.getElementById('handoff').classList.add('show');
   }
   if (aiOn) scheduleAI();   // 若 AI 先手则立即行动（当前人类先手，通常为空操作）
+  J.initSettings();
 })();

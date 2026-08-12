@@ -2,7 +2,6 @@
 (function () {
   const J = window.Junqi, B = J.Board, Engine = J.Engine;
   const canvas = document.getElementById('layoutCanvas');
-  const view = J.createBoardView(canvas);
   const msgEl = document.getElementById('layoutMsg');
   const paletteEl = document.getElementById('palette');
   const titleEl = document.getElementById('title');
@@ -11,9 +10,10 @@
   const opp = params.get('opp') || 'human';
   const level = params.get('level') || 'normal';
   const humanSide = params.get('side') || 'black';
+  let side = humanSide;
 
   const tempState = Engine.createGame({ mode: 'hidden' }); // 仅用于取本方棋子与随机布阵
-  let side = humanSide;
+  let view = J.createBoardView(canvas, { bottomSide: side });
   let placed = {};        // cell -> id
   let held = null;        // 当前手持的 id
   let blackLayout = null; // 黑方已确认
@@ -66,7 +66,7 @@
     const heldKind = held ? held.split('-')[1] : null;
     if (held && heldKind === kind) { held = null; renderAll(); return; }
     const avail = idsOfKind(kind).find((id) => !Object.values(placed).includes(id));
-    if (avail) { held = avail; renderAll(); }
+    if (avail) { held = avail; J.Sound.click(); renderAll(); }
   }
 
   function onTap(cell) {
@@ -76,10 +76,10 @@
     if (!own.includes(cell)) return;
     if (held) {
       if (placed[cell]) return;            // 该格已被占
-      placed[cell] = held; held = null; renderAll(); return;
+      placed[cell] = held; held = null; J.Sound.click(); renderAll(); return;
     }
     if (placed[cell]) {                    // 拾起已布棋子
-      held = placed[cell]; delete placed[cell]; renderAll();
+      held = placed[cell]; delete placed[cell]; J.Sound.click(); renderAll();
     }
   }
 
@@ -175,6 +175,7 @@
       blackLayout = layout;
       side = 'red';
       placed = {}; held = null;
+      view = J.createBoardView(canvas, { bottomSide: side }); view.fit();
       titleEl.textContent = '布阵 · 红方';
       document.getElementById('handoffText').textContent = '请把设备交给红方';
       document.getElementById('handoff').classList.add('show');
@@ -221,4 +222,5 @@
   function fitAndRender() { view.fit(); renderAll(); }
   window.addEventListener('resize', fitAndRender);
   fitAndRender();
+  J.initSettings();
 })();

@@ -58,8 +58,11 @@
   })();
 
   // —— 棋盘渲染器 ——
-  // createBoardView(canvas) 返回 { draw(model, opts), cellCenter, hitTest, fit }
-  J.createBoardView = function (canvas) {
+  // createBoardView(canvas, opts) 返回 { draw(model, opts), cellCenter, hitTest, fit }
+  // opts.bottomSide: 'red'(默认，红在下) | 'black'(黑在下) —— 控制整盘上下翻转
+  J.createBoardView = function (canvas, opts) {
+    opts = opts || {};
+    const bottomSide = opts.bottomSide || 'red';
     const ctx = canvas.getContext('2d');
     let W = 0, H = 0, cs = 0, ox = 0, oy = 0;
 
@@ -82,16 +85,21 @@
       oy = Math.floor((H - cs * B.ROWS) / 2);
     }
 
-    function cellTL(cell) { const { r, c } = B.rc(cell); return { x: ox + c * cs, y: oy + r * cs }; }
+    // 视角翻转：bottomSide='black' 时把整盘上下颠倒，使黑方在下方
+    const dispRow = (r) => (bottomSide === 'black' ? B.ROWS - 1 - r : r);
+    const modelRow = (dr) => (bottomSide === 'black' ? B.ROWS - 1 - dr : dr);
+
+    function cellTL(cell) { const { r, c } = B.rc(cell); const dr = dispRow(r); return { x: ox + c * cs, y: oy + dr * cs }; }
     function cellCenter(cell) { const { x, y } = cellTL(cell); return { x: x + cs / 2, y: y + cs / 2 }; }
     function hitTest(px, py) {
-      const c = Math.floor((px - ox) / cs), r = Math.floor((py - oy) / cs);
-      if (!B.inBounds(r, c)) return -1;
-      return B.idx(r, c);
+      const c = Math.floor((px - ox) / cs), dr = Math.floor((py - oy) / cs);
+      if (c < 0 || c >= B.COLS || dr < 0 || dr >= B.ROWS) return -1;
+      return B.idx(modelRow(dr), c);
     }
 
-    function drawPiece(c, piece) {
-      const radius = cs * 0.36;
+    function drawPiece(c, piece, scale) {
+      scale = scale || 1;
+      const radius = cs * 0.36 * scale;
       if (piece.back) {
         ctx.beginPath(); ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = '#54657a'; ctx.fill();
@@ -176,8 +184,24 @@
       }
       // 棋子
       for (let i = 0; i < B.N; i++) {
+        if (opts.skipCell === i) continue;
         const piece = model.cells[i].piece;
         if (piece) drawPiece(cellCenter(i), piece);
+      }
+      // 动画浮层（移动中的棋子 / 翻棋弹出）
+      if (opts.float) {
+        drawPiece({ x: opts.float.x, y: opts.float.y },
+          { kind: opts.float.kind, side: opts.float.side, back: !!opts.float.back }, opts.float.scale || 1);
+      }
+      // 碰撞闪环
+      if (opts.ring) {
+        const rc = cellCenter(opts.ring.cell);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - opts.ring.t);
+        ctx.beginPath();
+        ctx.arc(rc.x, rc.y, cs * (0.62 - 0.4 * opts.ring.t), 0, Math.PI * 2);
+        ctx.strokeStyle = opts.ring.color; ctx.lineWidth = Math.max(2, cs * 0.05); ctx.stroke();
+        ctx.restore();
       }
     }
 

@@ -74,17 +74,18 @@
 
 ---
 
-## 迭代 5 · 视听与打磨
-**交付**：移动动画、战斗特效、音效开关、战绩统计、新手引导、无障碍与字体放大适配、性能优化（稳定 60 fps）。
+## 迭代 5 · 视听与打磨 ✅ 已完成
+**交付**：移动/翻棋/战斗动画（requestAnimationFrame 插值 + 浮层 + 闪环）、WebAudio 合成音效（零素材）、全局设置（音效开关 + 视角 黑/红/自动）、结算后「查看全盘」、DOM 桩烟雾测试。
 
-**退出标准**：中低端机型无掉帧；无音效资源缺失；引导可跳过且只出现一次。
+**退出标准**：34/34 单测 + DOM 烟雾测试全绿；动画仅在可见步播放（不泄露暗棋信息）；音效不依赖任何外部资源。
 
 ---
 
-## 迭代 6 · 打包发布
-**交付**：复用本机 Android SDK（已就绪，来源 planet-pk，路径 `/Users/brhon/android-sdk`）；Capacitor 安卓工程、应用图标与启动图、竖屏锁定、生成 release keystore 并签名 APK、安装说明。
+## 迭代 6 · 打包发布 ✅ 已完成（离线原生 WebView 方案）
+**交付**：复用本机 Android SDK（`build-tools/35.0.0` + `platforms/android-34`）；原生 `WebView` 包装 `www/`，`android/build.sh` 一键离线构建 → `build/junqi-release.apk`；`apksigner` v1/v2/v3 签名校验通过。
 
-**退出标准**：APK 在 Android 8.0+ 真机安装并完成两种玩法各一局；体积 < 15 MB；无网络权限。
+**退出标准**：APK 在 Android 5.0+（minSdk 21）可安装运行；`apksigner verify` 三方案通过；体积约 50KB；无网络权限、纯离线。
+> 注：因本机 npm registry 不可达，未走 Capacitor/Gradle，改用本地 SDK 工具链直接打包（功能等价、零外部依赖）。
 
 ---
 

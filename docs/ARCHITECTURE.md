@@ -1,6 +1,6 @@
 # 技术架构说明（ARCHITECTURE）
 
-> 版本 v0.5（迭代 1 引擎、迭代 2 前端 UI、迭代 3 单机 AI、迭代 4 存档/悔棋/阵型库 已落地）。本文为权威架构说明；与代码如有偏差以代码为准并回写本文。
+> 版本 v1.0（迭代 1 引擎、迭代 2 前端 UI、迭代 3 单机 AI、迭代 4 存档/悔棋/阵型库、迭代 5 视听打磨、迭代 6 离线签名 APK 已落地）。本文为权威架构说明；与代码如有偏差以代码为准并回写本文。
 
 ---
 
@@ -113,11 +113,31 @@ AI 计算放 `requestIdleCallback` / `setTimeout` 分片，避免阻塞主线程
 
 ## 8. 打包与发布
 
+### 8.1 离线原生 WebView 方案（当前采用，迭代 6）
+因本机 npm registry 不可达，标准 Capacitor + Gradle 路线无法离线进行。改用**原生 WebView 封装**：一个 `MainActivity` 用 `WebView` 加载 `file:///android_asset/www/index.html`，把整个 `www/` 作为 assets 打进 APK。逻辑全部复用既有 HTML5 引擎，零代码改写，确定可离线产出可安装、可签名的 APK。
+
+构建链路（`android/build.sh`，纯用本地 Android SDK 工具链）：
+1. python 生成启动图标 `res/drawable/ic_launcher.png`
+2. `javac -cp $ANDROID_HOME/platforms/android-34/android.jar` 编译 `MainActivity.java`
+3. `d8` 将 class 转 `classes.dex`
+4. `aapt2 compile --dir res` + `aapt2 link -I android.jar`（产出含资源但无代码/ assets 的底座 APK）
+5. 把 `assets/www`（整份 `www/`）与 `classes.dex` 注入底座 APK
+6. `zipalign -p 4` 对齐
+7. 首次 `keytool` 生成 `build/release.keystore`，随后 `apksigner` 以 v1/v2/v3 签名 → `build/junqi-release.apk`
+
+关键 API 与约束：
+- `WebSettings`：启用 JS、`DomStorageEnabled`（localStorage/存档依赖）、`allowFileAccess`。
+- `WebViewClient.shouldOverrideUrlLoading` 仅放行 `file:///android_asset/` 本地资源，阻止外跳。
+- `onKeyDown(BACK)` 在页内历史回退，避免误退出。
+- `AndroidManifest`：包名 `com.junqi`、minSdk 21 / targetSdk 34、`screenOrientation=portrait`、LAUNCHER 入口 `exported=true`。
+- **不申请网络权限**，纯离线。
+
+### 8.2 标准 Capacitor 方案（联网环境备选）
 1. `npm i @capacitor/core @capacitor/cli @capacitor/android`
 2. `npx cap init` → `npx cap add android` → `npx cap sync`
-3. **本机 Android SDK 已就绪**（来源：planet-pk 项目，路径 `/Users/brhon/android-sdk`）。包含 cmdline-tools/latest、platform-tools（adb/fastboot）、platforms android-34/android-36、build-tools 34.0.0/35.0.0、已接受全部 licenses。构建前只需 `export ANDROID_HOME=/Users/brhon/android-sdk`（或 `android/local.properties` 写入 `sdk.dir=/Users/brhon/android-sdk`）。
+3. **本机 Android SDK 已就绪**（来源：planet-pk 项目，路径 `/Users/brhon/android-sdk`）。包含 cmdline-tools/latest、platform-tools（adb/fastboot）、platforms android-34/android-36、build-tools 34.0.0/35.0.0、已接受全部 licenses。构建前只需 `export ANDROID_HOME=/Users/brhon/android-sdk`。
 4. `cd android && ./gradlew assembleRelease`（或 `npx cap build android`）。Gradle 用 wrapper（gradle-8.14.3），无需全局安装。
-5. **签名**：planet-pk 未配置 release signingConfig，故其 APK 为 debug 签名。发版需生成自有 keystore：`keytool -genkey -v -keystore ../junqi-release-key.keystore -alias junqi -keyalg RSA -keysize 2048 -validity 10000`，并在 `app/build.gradle` 的 release 块引用。keystore 不得入库（已加 `.gitignore`）。
+5. **签名**：生成自有 keystore：`keytool -genkey -v -keystore ../junqi-release-key.keystore -alias junqi -keyalg RSA -keysize 2048 -validity 10000`，并在 `app/build.gradle` 的 release 块引用。keystore 不得入库。
 6. 权限清单只保留必需项，**不申请网络权限**。
 
 ## 9. 目录规划
@@ -125,9 +145,8 @@ AI 计算放 `requestIdleCallback` / `setTimeout` 分片，避免阻塞主线程
 ```
 docs/            文档（当前唯一内容）
 www/             index.html + css/ + js/（board/pieces/engine/ai/ui/app）
-test/            engine.test.js / view.test.js / app.dom.test.js
-android/         Capacitor 生成
-capacitor.config.json
+test/            engine.test.js / ai.test.js / integration.test.js / iteration4.test.js / smoke_dom.js
+android/         原生 WebView 包装（app/ 源码 + build.sh）；build/ 由 .gitignore 忽略
 package.json
 ```
 

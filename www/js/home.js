@@ -24,6 +24,7 @@
   document.getElementById('aiLevel').addEventListener('change', (e) => { level = e.target.value; });
 
   document.getElementById('startBtn').addEventListener('click', () => {
+    J.Sound.click();
     J.clearState();
     J.saveMode(mode);
     const q = `mode=${mode}&opp=${opp}&level=${level}&side=black`;
@@ -51,4 +52,6 @@
   const rules = document.getElementById('rulesOverlay');
   document.getElementById('rulesBtn').addEventListener('click', () => rules.classList.add('show'));
   document.getElementById('closeRules').addEventListener('click', () => rules.classList.remove('show'));
+
+  J.initSettings();
 })();
