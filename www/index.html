@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>军棋 · 主页</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <span>军棋 · 陆战棋</span>
+      <span class="spacer"></span>
+      <button id="rulesBtn">规则</button>
+    </header>
+    <div class="content">
+      <h1>选择玩法</h1>
+      <div class="card">
+        <div class="opt active" data-mode="flip">
+          <div>
+            <div>翻棋</div>
+            <div class="tag">50 子随机扣放，每回合翻子或走明子</div>
+          </div>
+        </div>
+        <div class="opt" data-mode="hidden">
+          <div>
+            <div>背靠背暗棋</div>
+            <div class="tag">双方各自暗布阵型，系统当裁判逐步揭示</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>对战方式</h2>
+      <div class="card">
+        <div class="opt active" data-opp="human">
+          <div>
+            <div>本地双人热座</div>
+            <div class="tag">同一台设备轮流操作（本版支持）</div>
+          </div>
+        </div>
+        <div class="opt disabled" data-opp="ai">
+          <div>
+            <div>人机对战</div>
+            <div class="tag">AI 难度（迭代 3 启用）</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" id="startBtn">开始对局</button>
+      <p class="sub">本游戏为纯离线单机，无广告、无账号、不上传任何数据。</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="box">
+      <h2>玩法规则</h2>
+      <p class="sub" style="text-align:left">
+        <b>翻棋</b>：50 枚棋子随机扣放在棋盘上，10 格留空。轮到你时二选一——翻开一枚暗子，或走一步己方已亮出的棋子。翻出的棋子按颜色归属，大吃小、同级同归于尽；工兵可拐弯排雷，炸弹与任何子同归于尽，踩中军旗即胜。<br><br>
+        <b>背靠背暗棋</b>：双方各自在己方半区布阵（军旗必入大本营、地雷仅最后两排、炸弹不在第一排），系统隐藏对方布阵。对局中只能看到自己与已交战揭示的棋子，由系统判定每一次碰撞。夺旗、对方无子可动或长时间无战斗即分胜负。<br><br>
+        详细规则见项目 <code>docs/规则说明.md</code>。
+      </p>
+      <button class="btn" id="closeRules">知道了</button>
+    </div>
+  </div>
+
+  <script src="js/board.js"></script>
+  <script src="js/pieces.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

@@ -335,6 +335,11 @@
           defender.alive = false; defender.cell = null;
           state.board[to] = null;
         }
+        // 战斗后向双方揭示参战棋子身份（revealMode=none 时不揭示）
+        if (state.rules.revealMode !== 'none') {
+          attacker.revealed = true;
+          defender.revealed = true;
+        }
         // 司令阵亡 → 亮出该方军旗
         if (res.attackerDies && attacker.kind === 'commander') revealFlag(state, attacker.side);
         if (res.defenderDies && defender.kind === 'commander') revealFlag(state, defender.side);

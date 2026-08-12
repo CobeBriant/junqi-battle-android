@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>军棋 · 对局</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="gameWrap">
+    <header class="topbar">
+      <button id="homeBtn">‹ 返回</button>
+      <span id="title">对局</span>
+      <span class="spacer"></span>
+    </header>
+    <div id="statusbar">
+      <span id="turnChip">黑方</span>
+      <span id="modeLabel" class="sub">翻棋</span>
+      <span class="spacer"></span>
+      <button id="undoBtn">悔棋</button>
+      <button id="restartBtn">重开</button>
+    </div>
+    <div id="canvasHost">
+      <canvas id="board"></canvas>
+      <div id="toast"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="handoff">
+    <div class="box">
+      <h2>请交接设备</h2>
+      <div class="big" id="handoffText">请把设备交给黑方</div>
+      <p class="sub">请勿偷看对方棋子。准备就绪后点击继续。</p>
+      <button class="btn" id="handoffBtn">交给对方</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="gameover">
+    <div class="box">
+      <h2>对局结束</h2>
+      <div class="big" id="resultText"></div>
+      <button class="btn" id="againBtn">再来一局</button>
+      <button class="btn secondary" id="toHomeBtn">返回首页</button>
+    </div>
+  </div>
+
+  <script src="js/board.js"></script>
+  <script src="js/pieces.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
