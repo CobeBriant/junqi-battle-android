@@ -35,13 +35,21 @@
         <div class="opt active" data-opp="human">
           <div>
             <div>本地双人热座</div>
-            <div class="tag">同一台设备轮流操作（本版支持）</div>
+            <div class="tag">同一台设备轮流操作</div>
           </div>
         </div>
-        <div class="opt disabled" data-opp="ai">
+        <div class="opt" data-opp="ai">
           <div>
             <div>人机对战</div>
-            <div class="tag">AI 难度（迭代 3 启用）</div>
+            <div class="tag">你执黑先手，AI 执红（简单 / 普通 / 困难）</div>
+          </div>
+          <div class="subsel">
+            <span>难度</span>
+            <select id="aiLevel">
+              <option value="easy">简单</option>
+              <option value="normal" selected>普通</option>
+              <option value="hard">困难</option>
+            </select>
           </div>
         </div>
       </div>

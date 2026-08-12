@@ -1,28 +1,35 @@
-/* game.js — 主对局页：两种玩法共用 Canvas 交互 */
+/* game.js — 主对局页：两种玩法共用 Canvas 交互（支持人机对战） */
 (function () {
-  const J = window.Junqi, B = J.Board, Engine = J.Engine;
+  const J = window.Junqi, B = J.Board, Engine = J.Engine, AI = J.AI;
 
   const params = new URLSearchParams(location.search);
-  let mode = params.get('mode') || J.loadMode() || 'flip';
+  const mode = params.get('mode') || J.loadMode() || 'flip';
+  const opp = params.get('opp') || 'human';        // human=热座, ai=人机
+  const level = params.get('level') || 'normal';
+  const humanSide = params.get('side') || 'black';
+  const aiSide = humanSide === 'black' ? 'red' : 'black';
+  const aiOn = opp === 'ai';
 
   let S; // 引擎状态
   if (mode === 'hidden') {
     const raw = J.loadState();
     S = raw ? Engine.load(JSON.parse(raw)) : Engine.createGame({ mode: 'hidden' });
   } else {
-    S = Engine.createGame({ mode: 'flip' });
+    S = Engine.createGame({ mode: 'flip', opponent: aiOn ? 'ai' : 'human', aiLevel: level });
   }
 
-  let viewer = S.turn;          // 当前观看视角（暗棋热座用）
-  let selected = null;          // 已选中的己方棋子所在格
-  let targets = null;           // 合法落点集合 Set
-  let pendingHandoff = false;   // 是否等待热座交接
+  let viewer = aiOn ? humanSide : S.turn;  // 人机模式下视角固定为人类，隐藏 AI 暗子
+  let selected = null;
+  let targets = null;
+  let pendingHandoff = false;
+  let aiThinking = false;
 
   const canvas = document.getElementById('board');
   const view = J.createBoardView(canvas);
   const toastEl = document.getElementById('toast');
   const turnChip = document.getElementById('turnChip');
   const modeLabel = document.getElementById('modeLabel');
+  const aiBadge = document.getElementById('aiBadge');
 
   // —— 渲染模型 ——
   function buildCells() {
@@ -57,7 +64,7 @@
     view.draw({ cells: buildCells() }, { selected, targets, lastCells: lastCells() });
     turnChip.textContent = J.sideName(S.turn) + '回合';
     turnChip.className = S.turn === 'red' ? 'red' : '';
-    modeLabel.textContent = mode === 'hidden' ? '背靠背暗棋' : '翻棋';
+    modeLabel.textContent = (mode === 'hidden' ? '背靠背暗棋' : '翻棋') + (aiOn ? ' · 人机' : '');
   }
 
   // —— 交互 ——
@@ -71,10 +78,10 @@
   }
 
   function onTap(cell) {
-    if (pendingHandoff || S.result) return;
+    if (pendingHandoff || aiThinking || S.result) return;
+    if (aiOn && S.turn !== humanSide) return;       // 非人类回合忽略点击
     const p = pieceAt(cell);
     if (selected != null && targets && targets.has(cell)) { doMove(selected, cell); return; }
-    // 翻棋：点击暗子直接翻开
     if (mode === 'flip' && p && !p.revealed) { doFlip(cell); return; }
     if (mySelectable(p)) {
       const moves = Engine.legalMoves(S, p.id);
@@ -106,12 +113,40 @@
 
   function afterAction(oldTurn) {
     if (S.result) { showGameOver(); return; }
-    if (mode === 'hidden' && S.turn !== oldTurn) {
+    if (!aiOn && mode === 'hidden' && S.turn !== oldTurn) {
       pendingHandoff = true;
       document.getElementById('handoffText').textContent = `请把设备交给${J.sideName(S.turn)}`;
       document.getElementById('handoff').classList.add('show');
     }
     render();
+    if (aiOn) scheduleAI();
+  }
+
+  // —— 人机：AI 回合调度 ——
+  function scheduleAI() {
+    if (!aiOn || S.result || S.turn !== aiSide) return;
+    aiThinking = true;
+    aiBadge.hidden = false;
+    setTimeout(() => {
+      if (S.result || S.turn !== aiSide) { aiThinking = false; aiBadge.hidden = true; return; }
+      const act = AI.chooseAction(S, aiSide, level);
+      aiBadge.hidden = true; aiThinking = false;
+      if (!act) { render(); return; }
+      const attId = act.pieceId;
+      const aKind = S.pieces[attId] ? S.pieces[attId].kind : null;
+      const defId = (act.type === 'move') ? S.board[act.to] : null;
+      const dKind = defId ? S.pieces[defId].kind : null;
+      const oldTurn = S.turn;
+      const r = Engine.applyAction(S, act);
+      if (!r.ok) {
+        const acts = Engine.allLegalActions(S);
+        if (acts.length) Engine.applyAction(S, acts[0]); // 兜底：随机一步避免卡死
+      } else if (r.battle) {
+        toast(battleText(oldTurn, aKind, dKind, r.battle));
+      }
+      render();
+      if (S.result) showGameOver();
+    }, 350);
   }
 
   function battleText(turn, aKind, dKind, battle) {
@@ -140,29 +175,25 @@
     if (!S.history.length) return;
     Engine.undo(S);
     selected = null; targets = null;
-    viewer = S.turn;
-    if (mode === 'hidden') {
-      pendingHandoff = true;
-      document.getElementById('handoffText').textContent = `请交回${J.sideName(S.turn)}`;
-    }
+    if (aiOn) { viewer = humanSide; pendingHandoff = false; }
+    else { viewer = S.turn; if (mode === 'hidden') { pendingHandoff = true; document.getElementById('handoffText').textContent = `请交回${J.sideName(S.turn)}`; } }
     render();
     if (pendingHandoff) document.getElementById('handoff').classList.add('show');
+    if (aiOn) scheduleAI();      // 若回退到 AI 回合，AI 重新行动
   }
   function restart() {
     if (mode === 'hidden') {
       const raw = J.loadState();
       S = raw ? Engine.load(JSON.parse(raw)) : Engine.createGame({ mode: 'hidden' });
     } else {
-      S = Engine.createGame({ mode: 'flip' });
+      S = Engine.createGame({ mode: 'flip', opponent: aiOn ? 'ai' : 'human', aiLevel: level });
     }
-    viewer = S.turn; selected = null; targets = null; pendingHandoff = false;
+    viewer = aiOn ? humanSide : S.turn;
+    selected = null; targets = null; pendingHandoff = false; aiThinking = false;
+    aiBadge.hidden = true;
     document.getElementById('gameover').classList.remove('show');
-    if (mode === 'hidden') {
-      pendingHandoff = true;
-      document.getElementById('handoffText').textContent = `请把设备交给${J.sideName(S.turn)}`;
-      document.getElementById('handoff').classList.add('show');
-    }
     render();
+    if (aiOn) scheduleAI();
   }
 
   // —— 事件 ——
@@ -195,11 +226,12 @@
   function fitAndRender() { view.fit(); render(); }
   window.addEventListener('resize', fitAndRender);
 
-  // 初始：暗棋需先交接给先手（黑方）
+  // 初始：暗棋热座需先交接给先手
   fitAndRender();
-  if (mode === 'hidden') {
+  if (!aiOn && mode === 'hidden') {
     pendingHandoff = true;
     document.getElementById('handoffText').textContent = `请把设备交给${J.sideName(S.turn)}`;
     document.getElementById('handoff').classList.add('show');
   }
+  if (aiOn) scheduleAI();   // 若 AI 先手则立即行动（当前人类先手，通常为空操作）
 })();

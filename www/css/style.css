@@ -67,6 +67,12 @@ h2 { font-size: 18px; margin: 18px 0 10px; color: var(--muted); font-weight: 600
   background: var(--black-piece);
 }
 #turnChip.red { background: var(--red-piece); }
+.aibadge {
+  background: #3a4a6b; color: #cfe3ff; font-size: 12px;
+  padding: 2px 8px; border-radius: 10px; animation: pulse 1s infinite ease-in-out;
+}
+.aibadge[hidden] { display: none; }
+@keyframes pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 #statusbar .spacer { flex: 1; }
 #statusbar button {
   background: var(--panel-2); color: var(--ink); border: none;

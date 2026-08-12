@@ -7,8 +7,13 @@
   const paletteEl = document.getElementById('palette');
   const titleEl = document.getElementById('title');
 
+  const params = new URLSearchParams(location.search);
+  const opp = params.get('opp') || 'human';
+  const level = params.get('level') || 'normal';
+  const humanSide = params.get('side') || 'black';
+
   const tempState = Engine.createGame({ mode: 'hidden' }); // 仅用于取本方棋子与随机布阵
-  let side = 'black';
+  let side = humanSide;
   let placed = {};        // cell -> id
   let held = null;        // 当前手持的 id
   let blackLayout = null; // 黑方已确认
@@ -89,6 +94,17 @@
     const layout = Object.entries(placed).map(([cell, id]) => ({ id, cell: Number(cell) }));
     const res = Engine.applyLayout(tempState, side, layout);
     if (!res.ok) { msgEl.classList.remove('heldinfo'); msgEl.textContent = '布阵不合法：' + res.errors.join('；'); return; }
+    if (opp === 'ai' && side === humanSide) {
+      // 人机模式：仅人类布阵，AI 自动随机布阵后开始
+      const aiSide = humanSide === 'black' ? 'red' : 'black';
+      const g = Engine.createGame({ mode: 'hidden', opponent: 'ai', aiLevel: level });
+      Engine.applyLayout(g, humanSide, layout);
+      Engine.applyLayout(g, aiSide, Engine.randomLayout(g, aiSide));
+      Engine._beginPlay(g);
+      J.saveState(Engine.serialize(g));
+      J.go(`game.html?mode=hidden&opp=ai&level=${level}&side=${humanSide}`);
+      return;
+    }
     if (side === 'black') {
       blackLayout = layout;
       side = 'red';

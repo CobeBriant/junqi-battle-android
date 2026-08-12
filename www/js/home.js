@@ -3,6 +3,7 @@
   const J = window.Junqi;
   let mode = 'flip';
   let opp = 'human';
+  let level = 'normal';
 
   document.querySelectorAll('.opt[data-mode]').forEach((el) => {
     el.addEventListener('click', () => {
@@ -12,14 +13,24 @@
     });
   });
 
+  document.querySelectorAll('.opt[data-opp]').forEach((el) => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.opt[data-opp]').forEach((x) => x.classList.remove('active'));
+      el.classList.add('active');
+      opp = el.dataset.opp;
+    });
+  });
+
+  document.getElementById('aiLevel').addEventListener('change', (e) => { level = e.target.value; });
+
   document.getElementById('startBtn').addEventListener('click', () => {
     J.clearState();
+    J.saveMode(mode);
+    const q = `mode=${mode}&opp=${opp}&level=${level}&side=black`;
     if (mode === 'flip') {
-      J.saveMode('flip');
-      J.go('game.html?mode=flip');
+      J.go('game.html?' + q);
     } else {
-      J.saveMode('hidden');
-      J.go('layout.html?mode=hidden');
+      J.go('layout.html?' + q);
     }
   });
 
