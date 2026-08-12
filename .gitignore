@@ -1,0 +1,27 @@
+# 依赖
+node_modules/
+package-lock.json.bak
+
+# Capacitor / Android 构建产物
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.tmp/
+dist/
