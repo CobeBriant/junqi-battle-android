@@ -1,0 +1,11 @@
+{
+  "name": "junqi-battle-android",
+  "version": "0.1.0",
+  "private": true,
+  "description": "传统军棋（陆战棋）安卓单机游戏 · 重构版：翻棋 + 背靠背暗棋。HTML5 Canvas 规则引擎 + Capacitor 打包。",
+  "scripts": {
+    "test": "node --test"
+  },
+  "author": "CobeBriant",
+  "license": "MIT"
+}

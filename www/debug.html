@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>军棋 · 连通图自检</title>
+<style>
+  body { font-family: system-ui, "PingFang SC", sans-serif; margin: 16px; color: #222; }
+  h1 { font-size: 18px; }
+  .legend { font-size: 13px; line-height: 1.7; margin: 8px 0 12px; }
+  .legend b { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+  .road { background: #bbb; }
+  .rail { background: #111; }
+  .diag { background: repeating-linear-gradient(45deg,#999,#999 2px,#fff 2px,#fff 4px); }
+  svg { border: 1px solid #ccc; background: #fafafa; touch-action: manipulation; }
+  text { font-size: 11px; fill: #555; }
+  .hq { fill: #ffe1a8; }
+  .camp { fill: #cfe8ff; }
+  .post { fill: #fff; }
+  .cell { stroke: #ddd; }
+  .hl { stroke: #ff5252; stroke-width: 3; }
+  .sel { fill: #ff5252; }
+  #info { margin-top: 10px; font-size: 13px; white-space: pre-wrap; }
+  button { margin-right: 8px; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<h1>军棋连通图自检（对照实体棋盘逐格核对）</h1>
+<div class="legend">
+  <div><b class="road"></b>公路（一步，含山界五列全通 + 行营斜线）
+     &nbsp;&nbsp;<b class="rail"></b>铁路（长驱，仅 c0/c2/c4 三桥过界）
+     &nbsp;&nbsp;<b class="diag"></b>行营斜线</div>
+  <div>点击任意格：红色高亮其<b>公路相邻</b>连线，蓝色高亮其<b>铁路可达</b>连线。山界线在 r5 与 r6 之间。</div>
+</div>
+<button id="toggleDiag">隐藏/显示行营斜线</button>
+<svg id="board" width="360" height="780"></svg>
+<div id="info">点击格子查看其连通情况。</div>
+
+<script src="js/board.js"></script>
+<script>
+  const B = window.Junqi.Board;
+  const CELL = 56, M = 28;
+  const svg = document.getElementById('board');
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const center = (i) => { const {r,c} = B.rc(i); return [M + c*CELL + CELL/2, M + r*CELL + CELL/2]; };
+
+  function line(a, b, cls) {
+    const [x1,y1] = center(a), [x2,y2] = center(b);
+    const l = document.createElementNS(SVGNS,'line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+    l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+    l.setAttribute('class', cls);
+    l.setAttribute('data-cls', cls);
+    return l;
+  }
+  function rect(i, cls) {
+    const {r,c} = B.rc(i);
+    const rect = document.createElementNS(SVGNS,'rect');
+    rect.setAttribute('x', M + c*CELL); rect.setAttribute('y', M + r*CELL);
+    rect.setAttribute('width', CELL); rect.setAttribute('height', CELL);
+    rect.setAttribute('class', 'cell ' + cls);
+    rect.dataset.i = i;
+    return rect;
+  }
+
+  // 绘制底色
+  for (let i=0;i<B.N;i++) {
+    const t = B.cellType(i);
+    svg.appendChild(rect(i, t === 'hq' ? 'hq' : t === 'camp' ? 'camp' : 'post'));
+  }
+  // 山界线
+  const hl = document.createElementNS(SVGNS,'line');
+  hl.setAttribute('x1', M); hl.setAttribute('x2', M + 5*CELL);
+  hl.setAttribute('y1', M + 5.5*CELL); hl.setAttribute('y2', M + 5.5*CELL);
+  hl.setAttribute('stroke', '#e06666'); hl.setAttribute('stroke-width', '3');
+  hl.setAttribute('stroke-dasharray', '6 4');
+  svg.appendChild(hl);
+
+  const diagLines = [];
+  // 公路（灰）
+  for (let i=0;i<B.N;i++) for (const j of B.roadAdj[i]) if (i<j) svg.appendChild(line(i,j,'road'));
+  // 铁路（黑，略粗）
+  for (let i=0;i<B.N;i++) for (const j of B.railAdj[i]) if (i<j) {
+    const l = line(i,j,'rail'); l.setAttribute('stroke-width','3'); svg.appendChild(l);
+  }
+  // 行营斜线（虚线）单独存一份
+  for (let i=0;i<B.N;i++) for (const j of B.roadAdj[i]) if (i<j) {
+    const {r:r1,c:c1}=B.rc(i), {r:r2,c:c2}=B.rc(j);
+    if (Math.abs(r1-r2)===1 && Math.abs(c1-c2)===1) {
+      const l = line(i,j,'diag'); l.setAttribute('stroke-width','1.5'); svg.appendChild(l);
+      diagLines.push(l);
+    }
+  }
+  // 坐标文字
+  for (let i=0;i<B.N;i++) {
+    const [x,y]=center(i);
+    const t=document.createElementNS(SVGNS,'text');
+    t.setAttribute('x',x-2); t.setAttribute('y',y+4);
+    const {r,c}=B.rc(i);
+    t.textContent = r+','+c;
+    svg.appendChild(t);
+  }
+
+  let selected = null;
+  svg.addEventListener('click', (e) => {
+    const cell = e.target.closest('[data-i]');
+    if (!cell) return;
+    const i = +cell.dataset.i;
+    // 清旧高亮
+    svg.querySelectorAll('.hl').forEach(el => el.remove());
+    svg.querySelectorAll('.sel').forEach(el => el.remove());
+    const sel = document.createElementNS(SVGNS,'circle');
+    const [x,y]=center(i);
+    sel.setAttribute('cx',x); sel.setAttribute('cy',y); sel.setAttribute('r',6);
+    sel.setAttribute('class','sel');
+    svg.appendChild(sel);
+
+    let roadN=[], railN=[];
+    for (const j of B.roadAdj[i]) { const l=line(i,j,'hl'); l.setAttribute('stroke','#ff5252'); svg.appendChild(l); roadN.push(j); }
+    // 铁路可达：BFS 整张铁路网从 i 出发（含转弯，模拟工兵）
+    const visited=new Set([i]); const q=[i];
+    while(q.length){ const cur=q.shift(); for(const nb of B.railAdj[cur]){ if(!visited.has(nb)){visited.add(nb); q.push(nb);} } }
+    visited.forEach(j=>{ if(j!==i){ const l=line(i,j,'hl'); l.setAttribute('stroke','#1565ff'); svg.appendChild(l); railN.push(j);} });
+
+    const {r,c}=B.rc(i);
+    document.getElementById('info').textContent =
+      `格 (${r},${c})  类型=${B.cellType(i)}  isRail=${B.isRail(r,c)}\n`+
+      `公路相邻(${roadN.length})： ${roadN.map(j=>{const{k,m}=B.rc(j);return `(${k},${m})`;}).join(' ')}\n`+
+      `铁路可达(${railN.length})： ${railN.map(j=>{const{k,m}=B.rc(j);return `(${k},${m})`;}).join(' ')}`;
+  });
+
+  document.getElementById('toggleDiag').addEventListener('click', () => {
+    diagLines.forEach(l => l.style.display = (l.style.display==='none'?'':'none'));
+  });
+</script>
+</body>
+</html>
