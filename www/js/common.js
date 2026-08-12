@@ -28,7 +28,34 @@
   J.saveMode = (m) => { try { sessionStorage.setItem(KEY_MODE, m); } catch (e) {} };
   J.loadMode = () => { try { return sessionStorage.getItem(KEY_MODE); } catch (e) { return null; } };
 
+  // —— 对局存档（跨会话持久，支持「继续上局」）——
+  const KEY_SAVE = 'junqi_save_v1';
+  J.saveGame = (cfg) => { try { localStorage.setItem(KEY_SAVE, JSON.stringify(cfg)); } catch (e) {} };
+  J.loadGame = () => { try { const s = localStorage.getItem(KEY_SAVE); return s ? JSON.parse(s) : null; } catch (e) { return null; } };
+  J.clearGame = () => { try { localStorage.removeItem(KEY_SAVE); } catch (e) {} };
+  J.hasUnfinishedGame = () => { const g = J.loadGame(); return !!(g && !g.finished); };
+
   J.go = (page) => { w.location.href = page; };
+
+  // 镜像格位：黑方坐标 <-> 红方坐标（r' = 11 - r，列不变）
+  J.mirrorCell = (cell) => { const { r, c } = B.rc(cell); return B.idx(11 - r, c); };
+
+  // —— 阵型库（仅暗棋布阵使用）——
+  // 约定：所有阵型均以黑方坐标存储；红方使用时镜像。
+  J.Formations = (function () {
+    const KEY = 'junqi_formations_v1';
+    const readAll = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+    const writeAll = (o) => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} };
+    const PRESETS = (J.Presets && J.Presets.PRESETS) || [];
+    return {
+      PRESETS,
+      presetEntries(name) { const p = PRESETS.find((x) => x.name === name); return p ? p.entries.map((e) => ({ cell: e.cell, kind: e.kind })) : null; },
+      listUser() { const o = readAll(); return Object.keys(o).map((k) => ({ name: k, createdAt: o[k].createdAt })); },
+      saveUser(name, entriesBlack) { const o = readAll(); o[name] = { entries: entriesBlack, createdAt: Date.now() }; writeAll(o); },
+      getUser(name) { const o = readAll(); return o[name] ? o[name].entries : null; },
+      removeUser(name) { const o = readAll(); delete o[name]; writeAll(o); },
+    };
+  })();
 
   // —— 棋盘渲染器 ——
   // createBoardView(canvas) 返回 { draw(model, opts), cellCenter, hitTest, fit }

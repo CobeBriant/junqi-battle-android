@@ -11,12 +11,22 @@
   const aiOn = opp === 'ai';
 
   let S; // 引擎状态
-  if (mode === 'hidden') {
+  const resume = params.get('resume') === '1';
+  const saved = resume ? J.loadGame() : null;
+  if (saved && saved.state) {
+    S = Engine.load(JSON.parse(saved.state));
+  } else if (mode === 'hidden') {
     const raw = J.loadState();
     S = raw ? Engine.load(JSON.parse(raw)) : Engine.createGame({ mode: 'hidden' });
   } else {
     S = Engine.createGame({ mode: 'flip', opponent: aiOn ? 'ai' : 'human', aiLevel: level });
   }
+
+  // 持久化当前对局（每步后调用，支持「继续上局」）
+  function persist() {
+    J.saveGame({ v: 1, mode, opp, level, humanSide, finished: !!S.result, state: Engine.serialize(S) });
+  }
+  persist(); // 立即落盘，保证新开对局可被续上
 
   let viewer = aiOn ? humanSide : S.turn;  // 人机模式下视角固定为人类，隐藏 AI 暗子
   let selected = null;
@@ -112,13 +122,14 @@
   }
 
   function afterAction(oldTurn) {
-    if (S.result) { showGameOver(); return; }
+    if (S.result) { showGameOver(); persist(); return; }
     if (!aiOn && mode === 'hidden' && S.turn !== oldTurn) {
       pendingHandoff = true;
       document.getElementById('handoffText').textContent = `请把设备交给${J.sideName(S.turn)}`;
       document.getElementById('handoff').classList.add('show');
     }
     render();
+    persist();
     if (aiOn) scheduleAI();
   }
 
@@ -146,6 +157,7 @@
       }
       render();
       if (S.result) showGameOver();
+      persist();
     }, 350);
   }
 
@@ -173,16 +185,26 @@
   // —— 顶栏按钮 ——
   function undo() {
     if (!S.history.length) return;
-    Engine.undo(S);
+    if (aiOn) {
+      // 多步悔棋：一直退到「轮到人类」，避免退到 AI 回合后又被自动重走
+      do { Engine.undo(S); } while (S.history.length && S.turn !== humanSide);
+      viewer = humanSide;
+      pendingHandoff = false;
+    } else {
+      Engine.undo(S);
+      viewer = S.turn;
+      if (mode === 'hidden') { pendingHandoff = true; document.getElementById('handoffText').textContent = `请交回${J.sideName(S.turn)}`; }
+    }
     selected = null; targets = null;
-    if (aiOn) { viewer = humanSide; pendingHandoff = false; }
-    else { viewer = S.turn; if (mode === 'hidden') { pendingHandoff = true; document.getElementById('handoffText').textContent = `请交回${J.sideName(S.turn)}`; } }
     render();
     if (pendingHandoff) document.getElementById('handoff').classList.add('show');
-    if (aiOn) scheduleAI();      // 若回退到 AI 回合，AI 重新行动
+    // 注意：悔棋后不自动调度 AI，交回人类决策
   }
   function restart() {
-    if (mode === 'hidden') {
+    if (resume && saved && saved.state && !saved.finished) {
+      // 续局模式下的「重开」= 回到本局存档起点（即从存档复位）
+      S = Engine.load(JSON.parse(saved.state));
+    } else if (mode === 'hidden') {
       const raw = J.loadState();
       S = raw ? Engine.load(JSON.parse(raw)) : Engine.createGame({ mode: 'hidden' });
     } else {
@@ -192,6 +214,7 @@
     selected = null; targets = null; pendingHandoff = false; aiThinking = false;
     aiBadge.hidden = true;
     document.getElementById('gameover').classList.remove('show');
+    persist();
     render();
     if (aiOn) scheduleAI();
   }

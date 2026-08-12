@@ -90,6 +90,72 @@
   }
   function clearAll() { placed = {}; held = null; renderAll(); }
 
+  // —— 阵型库 ——
+  function toBlackEntries() {
+    // 将当前 placed（cell->id）转为黑方坐标的 [{cell, kind}]（红方则镜像）
+    const out = [];
+    for (const cell in placed) {
+      const p = tempState.pieces[placed[cell]];
+      const c = side === 'red' ? J.mirrorCell(Number(cell)) : Number(cell);
+      out.push({ cell: c, kind: p.kind });
+    }
+    return out;
+  }
+  function saveFormation() {
+    const name = (window.prompt('阵型名称：') || '').trim();
+    if (!name) return;
+    J.Formations.saveUser(name, toBlackEntries());
+    msgEl.classList.add('heldinfo');
+    msgEl.textContent = `已保存阵型「${name}」`;
+  }
+  function applyFormation(entries) {
+    // entries: 黑方坐标 [{cell, kind}]；按当前 side 镜像后映射为 id
+    const need = entries.map((e) => ({ cell: side === 'red' ? J.mirrorCell(e.cell) : e.cell, kind: e.kind }));
+    const counts = {};
+    need.forEach((e) => { counts[e.kind] = (counts[e.kind] || 0) + 1; });
+    for (const k in counts) {
+      if (counts[k] !== J.Pieces.COMPOSITION[k]) { msgEl.textContent = `阵型「${k}」数量不符，无法使用`; return; }
+    }
+    const used = new Set();
+    const layout = [];
+    for (const e of need) {
+      const p = Object.values(tempState.pieces).find((pp) => pp.side === side && pp.kind === e.kind && !used.has(pp.id));
+      if (!p) { msgEl.textContent = '阵型与可用棋子不匹配'; return; }
+      used.add(p.id); layout.push({ id: p.id, cell: e.cell });
+    }
+    const res = Engine.applyLayout(tempState, side, layout);
+    if (!res.ok) { msgEl.textContent = '阵型不合法：' + res.errors.join('；'); return; }
+    placed = {}; for (const { id, cell } of layout) placed[cell] = id;
+    held = null; renderAll();
+  }
+  function openFormations() {
+    const panel = document.getElementById('formationPanel');
+    const list = document.getElementById('formationList');
+    list.innerHTML = '';
+    const mk = (title, sub, onClick, onDel) => {
+      const row = document.createElement('div');
+      row.className = 'frow';
+      const info = document.createElement('div');
+      info.className = 'finfo';
+      info.innerHTML = `<div class="fname">${title}</div><div class="fsub">${sub}</div>`;
+      info.addEventListener('click', onClick);
+      row.appendChild(info);
+      if (onDel) {
+        const del = document.createElement('button');
+        del.className = 'fdel'; del.textContent = '删除';
+        del.addEventListener('click', (ev) => { ev.stopPropagation(); onDel(); });
+        row.appendChild(del);
+      }
+      list.appendChild(row);
+    };
+    J.Formations.PRESETS.forEach((p) => mk(p.name, p.desc, () => { applyFormation(J.Formations.presetEntries(p.name)); closeFormations(); }));
+    J.Formations.listUser().forEach((u) => mk(u.name, '我的阵型',
+      () => { applyFormation(J.Formations.getUser(u.name)); closeFormations(); },
+      () => { if (window.confirm(`删除阵型「${u.name}」？`)) { J.Formations.removeUser(u.name); openFormations(); } }));
+    panel.classList.add('show');
+  }
+  function closeFormations() { document.getElementById('formationPanel').classList.remove('show'); }
+
   function confirm() {
     const layout = Object.entries(placed).map(([cell, id]) => ({ id, cell: Number(cell) }));
     const res = Engine.applyLayout(tempState, side, layout);
@@ -140,6 +206,12 @@
   document.getElementById('clearBtn').addEventListener('click', clearAll);
   document.getElementById('confirmBtn').addEventListener('click', confirm);
   document.getElementById('backBtn').addEventListener('click', () => J.go('index.html'));
+  const saveFormBtn = document.getElementById('saveFormBtn');
+  if (saveFormBtn) saveFormBtn.addEventListener('click', saveFormation);
+  const formLibBtn = document.getElementById('formLibBtn');
+  if (formLibBtn) formLibBtn.addEventListener('click', openFormations);
+  const formCloseBtn = document.getElementById('formCloseBtn');
+  if (formCloseBtn) formCloseBtn.addEventListener('click', closeFormations);
   document.getElementById('handoffBtn').addEventListener('click', () => {
     document.getElementById('handoff').classList.remove('show');
     renderAll();

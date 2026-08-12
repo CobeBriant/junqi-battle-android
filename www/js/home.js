@@ -34,6 +34,20 @@
     }
   });
 
+  // 「继续上局」：存在未完成存档时显示
+  const resumeBtn = document.getElementById('resumeBtn');
+  const saved = J.loadGame();
+  if (saved && !saved.finished) {
+    resumeBtn.style.display = '';
+    const modeName = saved.mode === 'hidden' ? '背靠背暗棋' : '翻棋';
+    const oppName = saved.opp === 'ai' ? `人机·${saved.level}` : '双人';
+    resumeBtn.textContent = `继续上局（${modeName}·${oppName}）`;
+    resumeBtn.addEventListener('click', () => {
+      J.saveMode(saved.mode);
+      J.go(`game.html?resume=1&mode=${saved.mode}&opp=${saved.opp}&level=${saved.level}&side=${saved.humanSide}`);
+    });
+  }
+
   const rules = document.getElementById('rulesOverlay');
   document.getElementById('rulesBtn').addEventListener('click', () => rules.classList.add('show'));
   document.getElementById('closeRules').addEventListener('click', () => rules.classList.remove('show'));

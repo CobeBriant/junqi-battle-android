@@ -100,6 +100,22 @@ h2 { font-size: 18px; margin: 18px 0 10px; color: var(--muted); font-weight: 600
 .overlay .big { font-size: 22px; font-weight: 700; margin: 12px 0; }
 .overlay .btn { margin-top: 18px; }
 
+/* 阵型库列表 */
+#formationList { max-height: 50vh; overflow-y: auto; margin: 6px 0 4px; }
+.frow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; margin: 6px 0; background: var(--panel-2);
+  border-radius: 10px; cursor: pointer;
+}
+.frow:hover { background: #2f3a47; }
+.finfo { text-align: left; flex: 1; }
+.fname { font-size: 16px; color: var(--ink); font-weight: 600; }
+.fsub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.fdel {
+  margin-left: 10px; padding: 6px 12px; font-size: 13px;
+  background: transparent; color: #ff7a7a; border: 1px solid #ff7a7a; border-radius: 8px;
+}
+
 /* —— 布阵页 —— */
 #layoutWrap { display: flex; flex-direction: column; height: 100vh; }
 #palette {
