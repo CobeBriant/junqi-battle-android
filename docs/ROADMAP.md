@@ -81,7 +81,7 @@
 ---
 
 ## 迭代 6 · 打包发布
-**交付**：安装 Android SDK command-line tools；Capacitor 安卓工程、应用图标与启动图、竖屏锁定、签名 release APK、安装说明。
+**交付**：复用本机 Android SDK（已就绪，来源 planet-pk，路径 `/Users/brhon/android-sdk`）；Capacitor 安卓工程、应用图标与启动图、竖屏锁定、生成 release keystore 并签名 APK、安装说明。
 
 **退出标准**：APK 在 Android 8.0+ 真机安装并完成两种玩法各一局；体积 < 15 MB；无网络权限。
 

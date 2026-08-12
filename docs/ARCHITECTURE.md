@@ -115,9 +115,10 @@ AI 计算放 `requestIdleCallback` / `setTimeout` 分片，避免阻塞主线程
 
 1. `npm i @capacitor/core @capacitor/cli @capacitor/android`
 2. `npx cap init` → `npx cap add android` → `npx cap sync`
-3. 需要 Android SDK command-line tools（本机当前仅有 JDK 17，SDK 待装）；`ANDROID_HOME` 指向 SDK 目录。
-4. `cd android && ./gradlew assembleRelease`，用本地 keystore 签名。
-5. 权限清单只保留必需项，**不申请网络权限**。
+3. **本机 Android SDK 已就绪**（来源：planet-pk 项目，路径 `/Users/brhon/android-sdk`）。包含 cmdline-tools/latest、platform-tools（adb/fastboot）、platforms android-34/android-36、build-tools 34.0.0/35.0.0、已接受全部 licenses。构建前只需 `export ANDROID_HOME=/Users/brhon/android-sdk`（或 `android/local.properties` 写入 `sdk.dir=/Users/brhon/android-sdk`）。
+4. `cd android && ./gradlew assembleRelease`（或 `npx cap build android`）。Gradle 用 wrapper（gradle-8.14.3），无需全局安装。
+5. **签名**：planet-pk 未配置 release signingConfig，故其 APK 为 debug 签名。发版需生成自有 keystore：`keytool -genkey -v -keystore ../junqi-release-key.keystore -alias junqi -keyalg RSA -keysize 2048 -validity 10000`，并在 `app/build.gradle` 的 release 块引用。keystore 不得入库（已加 `.gitignore`）。
+6. 权限清单只保留必需项，**不申请网络权限**。
 
 ## 9. 目录规划
 
@@ -137,5 +138,5 @@ package.json
 | 棋盘连通性理解有误（规则说明 D-1/D-2） | 走法全错，返工大 | 迭代 1 先出连通图可视化自检页，与实体棋盘图逐条比对 |
 | 暗棋信息泄露（DOM / 存档 / AI） | 玩法失效 | 视野过滤在引擎层 + 专门的视野单测 |
 | AI 强度不足 | 单机可玩性差 | 分档实现，普通档先保证不送子，困难档独立迭代 |
-| 本机无 Android SDK | 出不了 APK | 迭代 1–5 全部在浏览器验证；迭代 6 前安装 SDK |
+| 本机 Android SDK | 已就绪（复用 planet-pk 的 `/Users/brhon/android-sdk`，含 android-34/36、build-tools 34/35、已接受 licenses、JDK 17） | 迭代 1–5 浏览器验证；迭代 6 直接打包，仅需补 release keystore |
 | 规则争议（各地变体不同） | 反复改 | 全部走规则开关，不做二选一的硬编码 |
