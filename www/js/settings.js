@@ -42,14 +42,14 @@
     const s = document.createElement('style'); s.id = 'settings-style';
     s.textContent = `
     .gearbtn{position:fixed;right:14px;bottom:14px;z-index:60;width:46px;height:46px;border-radius:50%;
-      background:#2a2f40;color:#fff;border:1px solid #3a4566;box-shadow:0 2px 8px rgba(0,0,0,.45);
+      background:#ffffff;color:#4f46e5;border:1px solid rgba(15,23,42,.08);box-shadow:0 6px 18px rgba(15,23,42,.18);
       font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
     .gearbtn:active{transform:scale(.94);}
-    .gswitch{display:flex;align-items:center;justify-content:space-between;padding:11px 2px;border-bottom:1px solid #2f3650;}
-    .gswitch .lbl{font-size:15px;color:#e8ecf4;}
-    .gswitch select{background:#323850;color:#fff;border:1px solid #3a4566;border-radius:8px;padding:7px 10px;font-size:14px;}
-    .rulesmini{text-align:left;font-size:12px;color:#9aa3b8;line-height:1.6;background:#23283a;border-radius:10px;padding:10px 12px;margin:12px 0;}
-    .rulesmini b{color:#cdd6e8;}
+    .gswitch{display:flex;align-items:center;justify-content:space-between;padding:11px 2px;border-bottom:1px solid rgba(15,23,42,.08);}
+    .gswitch .lbl{font-size:15px;color:#1f2933;}
+    .gswitch select{background:#f1f3f7;color:#1f2933;border:1px solid rgba(15,23,42,.12);border-radius:8px;padding:7px 10px;font-size:14px;}
+    .rulesmini{text-align:left;font-size:12px;color:#7b8794;line-height:1.6;background:#f1f3f7;border-radius:10px;padding:10px 12px;margin:12px 0;}
+    .rulesmini b{color:#4f46e5;}
     `;
     document.head.appendChild(s);
   }

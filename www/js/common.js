@@ -84,7 +84,6 @@
       cs = Math.floor(Math.min((W - 2 * PAD) / B.COLS, (H - 2 * PAD) / B.ROWS));
       ox = Math.floor((W - cs * B.COLS) / 2);
       oy = Math.floor((H - cs * B.ROWS) / 2);
-      buildGrain();
     }
 
     // 视角翻转：bottomSide='black' 时把整盘上下颠倒，使黑方在下方
@@ -115,17 +114,8 @@
     function drawRail(a, b) {
       const pa = cellCenter(a), pb = cellCenter(b);
       const dx = pb.x - pa.x, dy = pb.y - pa.y, len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len, ny = dx / len, off = cs * 0.11;
-      ctx.strokeStyle = 'rgba(90,60,30,.55)'; ctx.lineWidth = Math.max(1, cs * 0.02);
-      const ties = Math.max(2, Math.round(len / (cs * 0.26)));
-      for (let k = 0; k <= ties; k++) {
-        const f = k / ties, x = pa.x + dx * f, y = pa.y + dy * f;
-        ctx.beginPath();
-        ctx.moveTo(x + nx * off * 1.5, y + ny * off * 1.5);
-        ctx.lineTo(x - nx * off * 1.5, y - ny * off * 1.5);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = '#caa46a'; ctx.lineWidth = Math.max(1.5, cs * 0.038);
+      const nx = -dy / len, ny = dx / len, off = cs * 0.06;
+      ctx.strokeStyle = '#aeb8c7'; ctx.lineWidth = Math.max(1, cs * 0.022);
       for (const s of [1, -1]) {
         ctx.beginPath();
         ctx.moveTo(pa.x + nx * off * s, pa.y + ny * off * s);
@@ -134,71 +124,45 @@
       }
     }
     function drawCamp(c) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, cs * 0.36, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(190,210,140,.95)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(110,138,58,.9)'; ctx.lineWidth = Math.max(1.5, cs * 0.04); ctx.stroke();
-      ctx.strokeStyle = 'rgba(110,138,58,.5)'; ctx.lineWidth = Math.max(1, cs * 0.02);
-      ctx.beginPath();
-      ctx.moveTo(c.x - cs * 0.22, c.y); ctx.lineTo(c.x + cs * 0.22, c.y);
-      ctx.moveTo(c.x, c.y - cs * 0.22); ctx.lineTo(c.x, c.y + cs * 0.22);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, c.y, cs * 0.34, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(99,102,241,.08)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(99,102,241,.5)'; ctx.lineWidth = Math.max(1, cs * 0.025); ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, c.y, cs * 0.06, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(99,102,241,.55)'; ctx.fill();
     }
     function drawHQ(c) {
       const s = cs * 0.2;
-      ctx.strokeStyle = 'rgba(140,58,47,.9)'; ctx.lineWidth = Math.max(2, cs * 0.05);
+      ctx.strokeStyle = 'rgba(239,68,68,.6)'; ctx.lineWidth = Math.max(1.5, cs * 0.035);
       ctx.strokeRect(c.x - s, c.y - s, 2 * s, 2 * s);
-      ctx.fillStyle = 'rgba(180,60,50,.85)';
+      ctx.fillStyle = 'rgba(239,68,68,.92)';
       ctx.beginPath();
-      ctx.moveTo(c.x, c.y - cs * 0.12); ctx.lineTo(c.x + cs * 0.13, c.y - cs * 0.05); ctx.lineTo(c.x, c.y + cs * 0.02);
+      ctx.moveTo(c.x, c.y - cs * 0.14); ctx.lineTo(c.x + cs * 0.14, c.y - cs * 0.06); ctx.lineTo(c.x, c.y + cs * 0.02);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,50,40,.9)'; ctx.beginPath();
-      ctx.moveTo(c.x, c.y - cs * 0.12); ctx.lineTo(c.x, c.y + cs * 0.12); ctx.stroke();
-    }
-    let grain = [];
-    function buildGrain() {
-      let seed = 987654321;
-      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-      grain = [];
-      for (let i = 0; i < 16; i++) grain.push({ y: rnd() * H, amp: 3 + rnd() * 9, ph: rnd() * 6.28, w: 0.5 + rnd() * 1.3 });
-    }
-    function drawWoodGrain() {
-      ctx.save(); ctx.globalAlpha = 0.10; ctx.strokeStyle = '#5a3a1c';
-      for (const g of grain) {
-        ctx.lineWidth = g.w; ctx.beginPath();
-        for (let x = 0; x <= W; x += 8) {
-          const y = g.y + Math.sin(x * 0.018 + g.ph) * g.amp;
-          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
+      ctx.strokeStyle = 'rgba(239,68,68,.92)'; ctx.lineWidth = Math.max(1, cs * 0.02);
+      ctx.beginPath(); ctx.moveTo(c.x, c.y - cs * 0.14); ctx.lineTo(c.x, c.y + cs * 0.14); ctx.stroke();
     }
 
     function drawPiece(c, piece, scale, sx) {
       scale = scale || 1;
-      const R = cs * 0.37 * scale;
+      const R = cs * 0.36 * scale;
       ctx.save();
       ctx.translate(c.x, c.y);
       if (sx != null) ctx.scale(sx, 1);
-      // 落地阴影
-      ctx.save(); ctx.translate(0, R * 0.14);
-      ctx.beginPath(); ctx.arc(0, 0, R * 0.96, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fill();
+      // 柔和投影
+      ctx.save();
+      ctx.shadowColor = 'rgba(15,23,42,.22)'; ctx.shadowBlur = R * 0.45; ctx.shadowOffsetY = R * 0.16;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
       ctx.restore();
-      let top, bot, ring, txt;
-      if (piece.back) { top = '#7c8aa0'; bot = '#3a4654'; ring = '#cdd8e6'; txt = '#e7eef7'; }
-      else if (piece.side === 'black') { top = '#52525a'; bot = '#17171b'; ring = '#d8b25a'; txt = '#f4e6c0'; }
-      else { top = '#e85a4f'; bot = '#8e1d18'; ring = '#ffd9a0'; txt = '#fff4e2'; }
-      const g = ctx.createRadialGradient(0, -R * 0.35, R * 0.1, 0, 0, R);
-      g.addColorStop(0, top); g.addColorStop(1, bot);
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-      ctx.lineWidth = Math.max(1.5, R * 0.1); ctx.strokeStyle = ring; ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, -R * 0.42, R * 0.55, R * 0.26, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,.26)'; ctx.fill();
-      ctx.fillStyle = txt;
-      ctx.font = `700 ${Math.floor(cs * 0.3 * scale)}px "PingFang SC","Microsoft YaHei",sans-serif`;
+      let fill;
+      if (piece.back) fill = '#cbd2dc';
+      else if (piece.side === 'black') fill = '#2b313b';
+      else fill = '#ef4444';
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
+      ctx.lineWidth = Math.max(1, R * 0.04); ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `700 ${Math.floor(cs * 0.28 * scale)}px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(piece.back ? '軍' : (J.SHORT[piece.kind] || '?'), 0, R * 0.04);
+      ctx.fillText(piece.back ? '?' : (J.SHORT[piece.kind] || '?'), 0, R * 0.02);
       ctx.restore();
     }
 
@@ -206,23 +170,31 @@
     function draw(model, opts) {
       opts = opts || {};
       ctx.clearRect(0, 0, W, H);
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, '#d9b483'); bg.addColorStop(0.5, '#c79a63'); bg.addColorStop(1, '#b07f4c');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-      drawWoodGrain();
-      ctx.strokeStyle = 'rgba(60,35,15,.55)'; ctx.lineWidth = Math.max(3, cs * 0.1);
-      ctx.strokeRect(ox - cs * 0.18, oy - cs * 0.18, cs * B.COLS + cs * 0.36, cs * B.ROWS + cs * 0.36);
+      // 应用底色
+      ctx.fillStyle = '#eef1f6'; ctx.fillRect(0, 0, W, H);
+      // 棋盘卡片（白底 + 柔和阴影 + 圆角）
+      const padX = ox - cs * 0.22, padY = oy - cs * 0.22;
+      const bw = cs * B.COLS + cs * 0.44, bh = cs * B.ROWS + cs * 0.44;
+      ctx.save();
+      ctx.shadowColor = 'rgba(20,30,60,.14)'; ctx.shadowBlur = cs * 0.22; ctx.shadowOffsetY = cs * 0.05;
+      roundRect(padX, padY, bw, bh, cs * 0.16); ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.restore();
 
-      // 格位底色
+      // 格位（淡色圆角块）
       for (let i = 0; i < B.N; i++) {
         const { x, y } = cellTL(i), ty = B.cellType(i);
-        ctx.fillStyle = ty === 'camp' ? 'rgba(180,205,130,.85)' : ty === 'hq' ? 'rgba(210,150,120,.9)' : 'rgba(247,236,210,.92)';
-        roundRect(x + 1.5, y + 1.5, cs - 3, cs - 3, cs * 0.08); ctx.fill();
+        ctx.fillStyle = ty === 'camp' ? 'rgba(99,102,241,.06)' : ty === 'hq' ? 'rgba(239,68,68,.05)' : 'rgba(241,243,247,1)';
+        roundRect(x + 1, y + 1, cs - 2, cs - 2, cs * 0.1); ctx.fill();
       }
-      // 公路
-      ctx.strokeStyle = 'rgba(80,55,25,.30)'; ctx.lineWidth = Math.max(1, cs * 0.02);
+      // 网格线（极淡）
+      ctx.strokeStyle = 'rgba(15,23,42,.06)'; ctx.lineWidth = 1;
+      for (let r = 0; r <= B.ROWS; r++) { const y = oy + r * cs; ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + B.COLS * cs, y); ctx.stroke(); }
+      for (let c = 0; c <= B.COLS; c++) { const x = ox + c * cs; ctx.beginPath(); ctx.moveTo(x, oy); ctx.lineTo(x, oy + B.ROWS * cs); ctx.stroke(); }
+
+      // 公路（细灰）
+      ctx.strokeStyle = 'rgba(148,163,184,.55)'; ctx.lineWidth = Math.max(1, cs * 0.018);
       for (const [a, b] of ROAD) lineSeg(a, b);
-      // 铁路（双轨 + 枕木）
+      // 铁路（双轨）
       for (const [a, b] of RAIL) drawRail(a, b);
       // 行营 & 大本营
       for (let i = 0; i < B.N; i++) {
@@ -234,16 +206,16 @@
       if (opts.lastCells) for (const cell of opts.lastCells) {
         if (cell == null) continue;
         const { x, y } = cellTL(cell);
-        ctx.fillStyle = 'rgba(80,140,255,.30)';
-        roundRect(x + 1.5, y + 1.5, cs - 3, cs - 3, cs * 0.08); ctx.fill();
+        ctx.fillStyle = 'rgba(79,70,229,.14)';
+        roundRect(x + 1, y + 1, cs - 2, cs - 2, cs * 0.1); ctx.fill();
       }
-      // 选中（脉冲光环）
+      // 选中（脉冲光环 · 现代蓝）
       if (opts.selected != null) {
         const c = cellCenter(opts.selected);
         const pulse = 0.5 + 0.5 * Math.sin(now2() / 180);
         ctx.save();
-        ctx.strokeStyle = `rgba(255,210,80,${0.6 + 0.4 * pulse})`;
-        ctx.lineWidth = Math.max(2, cs * 0.06);
+        ctx.strokeStyle = `rgba(79,70,229,${0.65 + 0.35 * pulse})`;
+        ctx.lineWidth = Math.max(2, cs * 0.05);
         ctx.beginPath(); ctx.arc(c.x, c.y, cs * (0.42 + 0.02 * pulse), 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       }
@@ -251,11 +223,11 @@
       if (opts.targets) for (const tg of opts.targets) {
         const c = cellCenter(tg), occ = model.cells[tg] && model.cells[tg].piece;
         if (occ) {
-          ctx.strokeStyle = 'rgba(224,87,62,.95)'; ctx.lineWidth = Math.max(2, cs * 0.05);
+          ctx.strokeStyle = 'rgba(239,68,68,.9)'; ctx.lineWidth = Math.max(2, cs * 0.045);
           ctx.beginPath(); ctx.arc(c.x, c.y, cs * 0.42, 0, Math.PI * 2); ctx.stroke();
         } else {
           const spp = 0.5 + 0.5 * Math.sin(now2() / 220);
-          ctx.fillStyle = `rgba(63,174,90,${0.55 + 0.35 * spp})`;
+          ctx.fillStyle = `rgba(22,163,74,${0.55 + 0.35 * spp})`;
           ctx.beginPath(); ctx.arc(c.x, c.y, cs * (0.13 + 0.02 * spp), 0, Math.PI * 2); ctx.fill();
         }
       }
