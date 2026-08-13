@@ -24,28 +24,8 @@ ALIAS="junqi"
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
 
-# 1) 生成启动图标（纯 stdlib，无需 PIL）
-python3 - "$APP/res/drawable/ic_launcher.png" <<'PY'
-import zlib, struct, sys
-out = sys.argv[1]
-w = h = 192
-def chunk(t, d):
-    c = t + d
-    return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-raw = b''
-for y in range(h):
-    raw += b'\x00'
-    for x in range(w):
-        # 深红底 + 简单棋盘格点缀
-        if (x // 24 + y // 24) % 2 == 0:
-            raw += b'\xb3\x30\x2a\xff'
-        else:
-            raw += b'\x8c\x26\x21\xff'
-png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0)) \
-      + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
-open(out, 'wb').write(png)
-print("icon written:", out)
-PY
+# 1) 生成启动图标（靛蓝圆角底 + 白色棋子剪影）
+python3 "$ROOT/android/gen_icon.py" "$APP/res/drawable/ic_launcher.png"
 
 # 2) 编译 Java -> class
 echo "== javac =="
